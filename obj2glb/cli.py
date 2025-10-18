@@ -33,8 +33,19 @@ from .utils import setup_logger
     is_flag=True,
     help="Overwrite existing output files"
 )
+@click.option(
+    "--thumbnail", "-t",
+    is_flag=True,
+    help="Generate PNG thumbnail images of converted models"
+)
+@click.option(
+    "--thumbnail-size",
+    type=str,
+    default="512x512",
+    help="Thumbnail size in WIDTHxHEIGHT format (default: 512x512)"
+)
 @click.version_option(version="0.1.0", prog_name="obj2glb")
-def main(input, output, batch, recursive, verbose, overwrite):
+def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size):
     """
     Convert 3D models from OBJ format to GLB format.
     
@@ -53,13 +64,23 @@ def main(input, output, batch, recursive, verbose, overwrite):
     \b
     Examples:
         obj2glb model.obj model.glb
-        obj2glb model.obj model.glb --verbose
+        obj2glb model.obj model.glb --verbose --thumbnail
         obj2glb --batch ./obj_files/ ./glb_files/
-        obj2glb --batch --recursive ./models/ ./output/
-        obj2glb --batch -r ./models/ ./output/ --overwrite
+        obj2glb --batch --recursive ./models/ ./output/ --thumbnail
+        obj2glb --batch -r ./models/ ./output/ --overwrite -t
+        obj2glb model.obj model.glb -t --thumbnail-size 1024x768
     """
     # Setup logging
     logger = setup_logger(verbose)
+    
+    # Parse thumbnail size
+    try:
+        width, height = map(int, thumbnail_size.lower().split('x'))
+        thumb_size = (width, height)
+    except (ValueError, AttributeError):
+        click.echo(f"Error: Invalid thumbnail size format: {thumbnail_size}", err=True)
+        click.echo("Use format: WIDTHxHEIGHT (e.g., 512x512, 1024x768)", err=True)
+        sys.exit(1)
     
     # Check for invalid --recursive usage
     if recursive and not batch:
@@ -80,7 +101,9 @@ def main(input, output, batch, recursive, verbose, overwrite):
             logger.info("OBJ to GLB Batch Converter")
         logger.info("="*60)
         
-        success, failure = convert_batch(input, output, overwrite, recursive)
+        success, failure = convert_batch(
+            input, output, overwrite, recursive, thumbnail, thumb_size
+        )
         
         # Exit with error code if any conversions failed
         if failure > 0:
@@ -98,7 +121,7 @@ def main(input, output, batch, recursive, verbose, overwrite):
         logger.info("OBJ to GLB Converter")
         logger.info("="*60)
         
-        success = convert_obj_to_glb(input, output, overwrite)
+        success = convert_obj_to_glb(input, output, overwrite, thumbnail, thumb_size)
         
         if not success:
             sys.exit(1)

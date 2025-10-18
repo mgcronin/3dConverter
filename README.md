@@ -7,6 +7,8 @@ A powerful command-line tool to convert 3D models from OBJ format to GLB format 
 - ✨ Convert OBJ files to GLB format with high fidelity
 - 🎨 Full material and texture support (diffuse, normal, specular maps)
 - 📦 Single file and batch conversion modes
+- 🖼️ PNG thumbnail generation for converted models
+- 🔄 Recursive directory traversal
 - 🚀 Fast and efficient processing
 - 💼 Embeds textures directly into GLB files
 - 🛡️ Comprehensive error handling and validation
@@ -58,6 +60,8 @@ obj2glb --batch -r ./models/ ./output/
 
 - `--batch`: Enable batch conversion mode
 - `--recursive, -r`: Recursively search subdirectories for OBJ files (use with --batch)
+- `--thumbnail, -t`: Generate PNG thumbnail images of converted models
+- `--thumbnail-size`: Set thumbnail size in WIDTHxHEIGHT format (default: 512x512)
 - `--verbose, -v`: Enable verbose output
 - `--overwrite, -o`: Overwrite existing output files
 - `--help`: Show help message
@@ -77,6 +81,12 @@ obj2glb --batch --verbose ./models/obj/ ./models/glb/
 **Recursive batch conversion:**
 ```bash
 obj2glb --batch --recursive ./all_models/ ./converted/
+```
+
+**Generate thumbnails:**
+```bash
+obj2glb model.obj model.glb --thumbnail
+obj2glb --batch ./models/ ./output/ -t --thumbnail-size 1024x768
 ```
 
 **Overwrite existing files:**

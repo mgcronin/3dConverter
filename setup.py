@@ -35,6 +35,9 @@ setup(
         "dev": [
             "pytest>=7.0.0",
         ],
+        "thumbnails": [
+            "pyrender>=0.1.45",
+        ],
     },
     entry_points={
         "console_scripts": [
