@@ -108,35 +108,133 @@ def generate_thumbnail(
             img = Image.fromarray(color, mode='RGB')
             
         except ImportError:
-            logger.debug("pyrender not available, falling back to basic rendering")
-            # Fall back to trimesh's basic rendering
-            # This is a simpler approach that doesn't require pyrender
-            
-            # Try to save a screenshot using trimesh's save_image
+            logger.debug("pyrender not available, falling back to matplotlib rendering")
+            # Fall back to matplotlib rendering
             try:
-                # Use trimesh scene's save_image if available
-                if isinstance(scene, trimesh.Scene):
-                    png_data = scene.save_image(resolution=size, visible=True)
-                else:
-                    # Create a scene from single mesh
-                    temp_scene = trimesh.Scene(scene)
-                    png_data = temp_scene.save_image(resolution=size, visible=True)
+                import matplotlib
+                matplotlib.use('Agg')  # Use non-interactive backend
+                import matplotlib.pyplot as plt
+                from mpl_toolkits.mplot3d import Axes3D
+                from mpl_toolkits.mplot3d.art3d import Poly3DCollection
                 
-                # Save the PNG data
-                img = Image.open(png_data)
+                # Create figure
+                fig = plt.figure(figsize=(size[0]/100, size[1]/100), dpi=100)
+                ax = fig.add_subplot(111, projection='3d')
+                
+                # Get meshes from scene
+                if isinstance(scene, trimesh.Scene):
+                    meshes = list(scene.geometry.values())
+                else:
+                    meshes = [scene]
+                
+                # Plot each mesh
+                for mesh in meshes:
+                    if hasattr(mesh, 'vertices') and hasattr(mesh, 'faces'):
+                        # Create 3D polygon collection
+                        vertices = mesh.vertices
+                        faces = mesh.faces
+                        
+                        # Create the mesh3d
+                        poly3d = [[vertices[j] for j in face] for face in faces]
+                        collection = Poly3DCollection(poly3d, alpha=0.8, 
+                                                     facecolor='lightblue', 
+                                                     edgecolor='darkblue', 
+                                                     linewidths=0.1)
+                        ax.add_collection3d(collection)
+                
+                # Set the aspect ratio and limits
+                if isinstance(scene, trimesh.Scene):
+                    bounds = scene.bounds
+                else:
+                    bounds = scene.bounds
+                
+                # Set axis limits
+                ax.set_xlim(bounds[0][0], bounds[1][0])
+                ax.set_ylim(bounds[0][1], bounds[1][1])
+                ax.set_zlim(bounds[0][2], bounds[1][2])
+                
+                # Set viewing angle for better perspective
+                ax.view_init(elev=20, azim=45)
+                
+                # Remove axis labels and grid for cleaner look
+                ax.set_xlabel('')
+                ax.set_ylabel('')
+                ax.set_zlabel('')
+                ax.grid(False)
+                ax.set_facecolor('white')
+                
+                # Save to a BytesIO object
+                from io import BytesIO
+                buf = BytesIO()
+                plt.tight_layout()
+                plt.savefig(buf, format='png', dpi=100, bbox_inches='tight', 
+                           facecolor='white', edgecolor='none')
+                buf.seek(0)
+                img = Image.open(buf)
+                plt.close(fig)
                 
             except Exception as e:
-                logger.debug(f"Basic rendering failed: {e}, using fallback")
-                # Last resort: create a simple placeholder image
-                img = Image.new('RGB', size, color=(240, 240, 240))
-                from PIL import ImageDraw, ImageFont
-                draw = ImageDraw.Draw(img)
-                text = "Preview\nNot Available"
-                bbox = draw.textbbox((0, 0), text)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-                position = ((size[0] - text_width) // 2, (size[1] - text_height) // 2)
-                draw.text(position, text, fill=(128, 128, 128))
+                logger.debug(f"Matplotlib rendering failed: {e}, trying basic trimesh")
+                # Try trimesh's save_image as another fallback
+                try:
+                    # Use trimesh scene's save_image if available
+                    if isinstance(scene, trimesh.Scene):
+                        png_data = scene.save_image(resolution=size, visible=True)
+                    else:
+                        # Create a scene from single mesh
+                        temp_scene = trimesh.Scene(scene)
+                        png_data = temp_scene.save_image(resolution=size, visible=True)
+                    
+                    # Save the PNG data
+                    img = Image.open(png_data)
+                    
+                except Exception as e2:
+                    logger.debug(f"All rendering methods failed: {e2}, using simple wireframe")
+                    # Create a simple 2D projection as last resort
+                    try:
+                        import matplotlib
+                        matplotlib.use('Agg')
+                        import matplotlib.pyplot as plt
+                        
+                        fig, ax = plt.subplots(figsize=(size[0]/100, size[1]/100), dpi=100)
+                        
+                        # Get vertices
+                        if isinstance(scene, trimesh.Scene):
+                            meshes = list(scene.geometry.values())
+                        else:
+                            meshes = [scene]
+                        
+                        for mesh in meshes:
+                            if hasattr(mesh, 'vertices'):
+                                # Simple 2D projection (top view)
+                                vertices = mesh.vertices
+                                ax.scatter(vertices[:, 0], vertices[:, 1], s=1, c='blue', alpha=0.5)
+                        
+                        ax.set_aspect('equal')
+                        ax.set_facecolor('white')
+                        ax.axis('off')
+                        
+                        from io import BytesIO
+                        buf = BytesIO()
+                        plt.tight_layout()
+                        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight',
+                                   facecolor='white', edgecolor='none')
+                        buf.seek(0)
+                        img = Image.open(buf)
+                        plt.close(fig)
+                        
+                    except Exception as e3:
+                        logger.warning(f"All rendering attempts failed: {e3}")
+                        # Very last resort: create a simple placeholder
+                        img = Image.new('RGB', size, color=(240, 240, 240))
+                        from PIL import ImageDraw
+                        draw = ImageDraw.Draw(img)
+                        text = "Preview\nNot Available"
+                        bbox = draw.textbbox((0, 0), text)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        position = ((size[0] - text_width) // 2, (size[1] - text_height) // 2)
+                        draw.text(position, text, fill=(128, 128, 128))
         
         # Ensure output directory exists
         output_path.parent.mkdir(parents=True, exist_ok=True)
