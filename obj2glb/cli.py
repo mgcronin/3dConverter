@@ -44,8 +44,13 @@ from .utils import setup_logger
     default="512x512",
     help="Thumbnail size in WIDTHxHEIGHT format (default: 512x512)"
 )
+@click.option(
+    "--preview", "-p",
+    is_flag=True,
+    help="Generate interactive HTML preview of converted models"
+)
 @click.version_option(version="0.1.0", prog_name="obj2glb")
-def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size):
+def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size, preview):
     """
     Convert 3D models from OBJ format to GLB format.
     
@@ -102,7 +107,7 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         logger.info("="*60)
         
         success, failure = convert_batch(
-            input, output, overwrite, recursive, thumbnail, thumb_size
+            input, output, overwrite, recursive, thumbnail, thumb_size, preview
         )
         
         # Exit with error code if any conversions failed
@@ -121,7 +126,7 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         logger.info("OBJ to GLB Converter")
         logger.info("="*60)
         
-        success = convert_obj_to_glb(input, output, overwrite, thumbnail, thumb_size)
+        success = convert_obj_to_glb(input, output, overwrite, thumbnail, thumb_size, preview)
         
         if not success:
             sys.exit(1)

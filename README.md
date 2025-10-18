@@ -7,7 +7,7 @@ A powerful command-line tool to convert 3D models from OBJ format to GLB format 
 - ✨ Convert OBJ files to GLB format with high fidelity
 - 🎨 Full material and texture support (diffuse, normal, specular maps)
 - 📦 Single file and batch conversion modes
-- 🖼️ PNG thumbnail generation for converted models
+- 🖼️ Automatic PNG thumbnail generation (converts existing JPG textures when available)
 - 🔄 Recursive directory traversal
 - 🚀 Fast and efficient processing
 - 💼 Embeds textures directly into GLB files
@@ -60,8 +60,9 @@ obj2glb --batch -r ./models/ ./output/
 
 - `--batch`: Enable batch conversion mode
 - `--recursive, -r`: Recursively search subdirectories for OBJ files (use with --batch)
-- `--thumbnail, -t`: Generate PNG thumbnail images of converted models
+- `--thumbnail, -t`: Generate PNG thumbnail images (converts JPG files from the model directory if available)
 - `--thumbnail-size`: Set thumbnail size in WIDTHxHEIGHT format (default: 512x512)
+- `--preview, -p`: Generate interactive HTML preview of converted models (viewable in any web browser)
 - `--verbose, -v`: Enable verbose output
 - `--overwrite, -o`: Overwrite existing output files
 - `--help`: Show help message
@@ -87,6 +88,13 @@ obj2glb --batch --recursive ./all_models/ ./converted/
 ```bash
 obj2glb model.obj model.glb --thumbnail
 obj2glb --batch ./models/ ./output/ -t --thumbnail-size 1024x768
+```
+
+**Generate interactive 3D preview:**
+```bash
+obj2glb model.obj model.glb --preview
+obj2glb --batch ./models/ ./output/ -p -t
+# Opens model.html in your web browser to view the 3D model with materials
 ```
 
 **Overwrite existing files:**

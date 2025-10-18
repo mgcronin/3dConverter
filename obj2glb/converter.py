@@ -10,6 +10,7 @@ import numpy as np
 
 from .materials import MaterialHandler
 from .thumbnail import generate_thumbnail, get_thumbnail_path
+from .preview import generate_preview_html
 from .utils import (
     validate_input_file,
     validate_output_file,
@@ -26,7 +27,8 @@ def convert_obj_to_glb(
     output_path: str,
     overwrite: bool = False,
     generate_thumbnail_image: bool = False,
-    thumbnail_size: tuple = (512, 512)
+    thumbnail_size: tuple = (512, 512),
+    generate_preview: bool = False
 ) -> bool:
     """
     Convert a single OBJ file to GLB format.
@@ -109,11 +111,20 @@ def convert_obj_to_glb(
             # Generate thumbnail if requested
             if generate_thumbnail_image:
                 thumbnail_path = get_thumbnail_path(output_file)
-                if generate_thumbnail(scene, thumbnail_path, size=thumbnail_size):
+                if generate_thumbnail(scene, thumbnail_path, size=thumbnail_size, obj_path=input_file):
                     thumb_size = format_file_size(thumbnail_path.stat().st_size)
                     logger.info(f"✓ Generated thumbnail: {thumbnail_path.name} ({thumb_size})")
                 else:
                     logger.warning(f"Failed to generate thumbnail for {output_file.name}")
+            
+            # Generate HTML preview if requested
+            if generate_preview:
+                try:
+                    preview_path = generate_preview_html(output_file)
+                    preview_size = format_file_size(preview_path.stat().st_size)
+                    logger.info(f"✓ Generated preview: {preview_path.name} ({preview_size})")
+                except Exception as e:
+                    logger.warning(f"Failed to generate preview: {e}")
             
             return True
         else:
@@ -141,7 +152,8 @@ def convert_batch(
     overwrite: bool = False,
     recursive: bool = False,
     generate_thumbnail_image: bool = False,
-    thumbnail_size: tuple = (512, 512)
+    thumbnail_size: tuple = (512, 512),
+    generate_preview: bool = False
 ) -> tuple:
     """
     Convert all OBJ files in a directory to GLB format.
@@ -202,7 +214,8 @@ def convert_batch(
                 str(output_file), 
                 overwrite,
                 generate_thumbnail_image,
-                thumbnail_size
+                thumbnail_size,
+                generate_preview
             ):
                 success_count += 1
             else:
