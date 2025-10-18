@@ -98,12 +98,13 @@ def validate_output_file(filepath: str, overwrite: bool = False) -> Path:
     return path
 
 
-def find_obj_files(directory: str) -> List[Path]:
+def find_obj_files(directory: str, recursive: bool = False) -> List[Path]:
     """
     Find all OBJ files in a directory.
     
     Args:
         directory: Path to the directory to search
+        recursive: If True, search subdirectories recursively
         
     Returns:
         List of Path objects for found OBJ files
@@ -119,26 +120,47 @@ def find_obj_files(directory: str) -> List[Path]:
     if not dir_path.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {directory}")
     
-    obj_files = list(dir_path.glob("*.obj"))
-    obj_files.extend(dir_path.glob("*.OBJ"))
+    if recursive:
+        # Recursive search using rglob
+        obj_files = list(dir_path.rglob("*.obj"))
+        obj_files.extend(dir_path.rglob("*.OBJ"))
+    else:
+        # Non-recursive search using glob
+        obj_files = list(dir_path.glob("*.obj"))
+        obj_files.extend(dir_path.glob("*.OBJ"))
     
     return sorted(set(obj_files))
 
 
-def get_output_path(input_path: Path, output_dir: Optional[Path] = None) -> Path:
+def get_output_path(input_path: Path, output_dir: Optional[Path] = None, 
+                    input_base_dir: Optional[Path] = None) -> Path:
     """
     Generate output path for a given input file.
     
     Args:
         input_path: Path to the input OBJ file
         output_dir: Optional output directory. If None, uses same directory as input
+        input_base_dir: Base directory for input (used to preserve directory structure)
         
     Returns:
         Path object for the output GLB file
     """
     if output_dir:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        return output_dir / f"{input_path.stem}.glb"
+        if input_base_dir:
+            # Preserve directory structure relative to base directory
+            try:
+                relative_path = input_path.relative_to(input_base_dir)
+                output_path = output_dir / relative_path.parent / f"{input_path.stem}.glb"
+            except ValueError:
+                # If relative path fails, just use the filename
+                output_path = output_dir / f"{input_path.stem}.glb"
+        else:
+            # Just use the filename in the output directory
+            output_path = output_dir / f"{input_path.stem}.glb"
+        
+        # Create parent directory if it doesn't exist
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return output_path
     else:
         return input_path.parent / f"{input_path.stem}.glb"
 

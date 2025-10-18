@@ -19,6 +19,11 @@ from .utils import setup_logger
     help="Enable batch conversion mode (INPUT and OUTPUT are directories)"
 )
 @click.option(
+    "--recursive", "-r",
+    is_flag=True,
+    help="Recursively search subdirectories for OBJ files (use with --batch)"
+)
+@click.option(
     "--verbose", "-v",
     is_flag=True,
     help="Enable verbose output"
@@ -29,7 +34,7 @@ from .utils import setup_logger
     help="Overwrite existing output files"
 )
 @click.version_option(version="0.1.0", prog_name="obj2glb")
-def main(input, output, batch, verbose, overwrite):
+def main(input, output, batch, recursive, verbose, overwrite):
     """
     Convert 3D models from OBJ format to GLB format.
     
@@ -42,14 +47,24 @@ def main(input, output, batch, verbose, overwrite):
         obj2glb --batch INPUT_DIR/ OUTPUT_DIR/
     
     \b
+    Recursive Batch Mode:
+        obj2glb --batch --recursive INPUT_DIR/ OUTPUT_DIR/
+    
+    \b
     Examples:
         obj2glb model.obj model.glb
         obj2glb model.obj model.glb --verbose
         obj2glb --batch ./obj_files/ ./glb_files/
-        obj2glb --batch ./models/ ./output/ --overwrite
+        obj2glb --batch --recursive ./models/ ./output/
+        obj2glb --batch -r ./models/ ./output/ --overwrite
     """
     # Setup logging
     logger = setup_logger(verbose)
+    
+    # Check for invalid --recursive usage
+    if recursive and not batch:
+        click.echo("Error: --recursive can only be used with --batch mode", err=True)
+        sys.exit(1)
     
     # Batch mode
     if batch:
@@ -59,10 +74,13 @@ def main(input, output, batch, verbose, overwrite):
             sys.exit(1)
         
         logger.info("="*60)
-        logger.info("OBJ to GLB Batch Converter")
+        if recursive:
+            logger.info("OBJ to GLB Recursive Batch Converter")
+        else:
+            logger.info("OBJ to GLB Batch Converter")
         logger.info("="*60)
         
-        success, failure = convert_batch(input, output, overwrite)
+        success, failure = convert_batch(input, output, overwrite, recursive)
         
         # Exit with error code if any conversions failed
         if failure > 0:

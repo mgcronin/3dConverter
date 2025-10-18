@@ -123,7 +123,8 @@ def convert_obj_to_glb(
 def convert_batch(
     input_dir: str,
     output_dir: str,
-    overwrite: bool = False
+    overwrite: bool = False,
+    recursive: bool = False
 ) -> tuple:
     """
     Convert all OBJ files in a directory to GLB format.
@@ -132,21 +133,25 @@ def convert_batch(
         input_dir: Path to directory containing OBJ files
         output_dir: Path to output directory for GLB files
         overwrite: If True, overwrite existing output files
+        recursive: If True, search subdirectories recursively
         
     Returns:
         Tuple of (success_count, failure_count)
     """
     try:
         # Find all OBJ files
-        obj_files = find_obj_files(input_dir)
+        obj_files = find_obj_files(input_dir, recursive=recursive)
         
         if not obj_files:
-            logger.warning(f"No OBJ files found in {input_dir}")
+            search_type = "recursively" if recursive else ""
+            logger.warning(f"No OBJ files found {search_type} in {input_dir}")
             return 0, 0
         
-        logger.info(f"Found {len(obj_files)} OBJ file(s) to convert")
+        search_type = "recursively " if recursive else ""
+        logger.info(f"Found {len(obj_files)} OBJ file(s) {search_type}to convert")
         
         # Create output directory
+        input_base_path = Path(input_dir)
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         
@@ -155,10 +160,22 @@ def convert_batch(
         failure_count = 0
         
         for i, obj_file in enumerate(obj_files, 1):
-            logger.info(f"\n[{i}/{len(obj_files)}] Processing {obj_file.name}")
+            # Show relative path if recursive, otherwise just filename
+            if recursive:
+                try:
+                    display_path = obj_file.relative_to(input_base_path)
+                except ValueError:
+                    display_path = obj_file.name
+            else:
+                display_path = obj_file.name
             
-            # Generate output path
-            output_file = get_output_path(obj_file, output_path)
+            logger.info(f"\n[{i}/{len(obj_files)}] Processing {display_path}")
+            
+            # Generate output path (preserving directory structure if recursive)
+            if recursive:
+                output_file = get_output_path(obj_file, output_path, input_base_path)
+            else:
+                output_file = get_output_path(obj_file, output_path)
             
             # Convert
             if convert_obj_to_glb(str(obj_file), str(output_file), overwrite):

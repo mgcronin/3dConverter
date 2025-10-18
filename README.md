@@ -44,9 +44,20 @@ Convert all OBJ files in a folder:
 obj2glb --batch ./obj_files/ ./glb_files/
 ```
 
+### Recursive Batch Conversion
+
+Recursively search subdirectories for OBJ files and preserve directory structure:
+
+```bash
+obj2glb --batch --recursive ./models/ ./output/
+# or use the short form
+obj2glb --batch -r ./models/ ./output/
+```
+
 ### Command-Line Options
 
 - `--batch`: Enable batch conversion mode
+- `--recursive, -r`: Recursively search subdirectories for OBJ files (use with --batch)
 - `--verbose, -v`: Enable verbose output
 - `--overwrite, -o`: Overwrite existing output files
 - `--help`: Show help message
@@ -61,6 +72,11 @@ obj2glb model.obj model.glb
 **Batch conversion with verbose output:**
 ```bash
 obj2glb --batch --verbose ./models/obj/ ./models/glb/
+```
+
+**Recursive batch conversion:**
+```bash
+obj2glb --batch --recursive ./all_models/ ./converted/
 ```
 
 **Overwrite existing files:**
