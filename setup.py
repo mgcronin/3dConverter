@@ -41,6 +41,17 @@ setup(
         "firebase": [
             "firebase-admin>=6.0.0",
         ],
+        "api": [
+            "fastapi>=0.104.0",
+            "uvicorn>=0.24.0",
+            "pydantic>=2.0.0",
+            "python-multipart>=0.0.6",
+        ],
+        "mcp": [
+            "fastapi>=0.104.0",
+            "uvicorn>=0.24.0",
+            "pydantic>=2.0.0",
+        ],
     },
     entry_points={
         "console_scripts": [

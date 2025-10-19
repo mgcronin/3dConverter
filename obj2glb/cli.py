@@ -12,7 +12,7 @@ from .firebase_importer import FirebaseImporter, FirebaseImportError
 
 
 @click.command()
-@click.argument("input", type=str)
+@click.argument("input", type=str, required=False)
 @click.argument("output", type=str, required=False)
 @click.option(
     "--batch",
@@ -75,8 +75,35 @@ from .firebase_importer import FirebaseImporter, FirebaseImportError
     is_flag=True,
     help="Validate Firebase import without actually importing (use with --firebase-import)"
 )
+@click.option(
+    "--firebase-update-existing",
+    is_flag=True,
+    help="Update existing documents instead of skipping them (use with --firebase-import)"
+)
+@click.option(
+    "--api-server",
+    is_flag=True,
+    help="Start the REST API server"
+)
+@click.option(
+    "--api-host",
+    type=str,
+    default="localhost",
+    help="API server host (default: localhost)"
+)
+@click.option(
+    "--api-port",
+    type=int,
+    default=8000,
+    help="API server port (default: 8000)"
+)
+@click.option(
+    "--mcp-server",
+    is_flag=True,
+    help="Start the MCP (Model Context Protocol) server"
+)
 @click.version_option(version="0.1.0", prog_name="obj2glb")
-def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size, preview, firebase_import, firebase_credentials, firebase_project_id, firebase_category, dry_run):
+def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size, preview, firebase_import, firebase_credentials, firebase_project_id, firebase_category, dry_run, firebase_update_existing, api_server, api_host, api_port, mcp_server):
     """
     Convert 3D models from OBJ format to GLB format.
     
@@ -97,6 +124,17 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         obj2glb --firebase-import GLB_DIR/
         obj2glb --firebase-import --dry-run GLB_DIR/
         obj2glb --firebase-import --firebase-category tools GLB_DIR/
+        obj2glb --firebase-import --firebase-update-existing GLB_DIR/
+    
+    \b
+    API Server Mode:
+        obj2glb --api-server
+        obj2glb --api-server --api-host 0.0.0.0 --api-port 8080
+    
+    \b
+    MCP Server Mode:
+        obj2glb --mcp-server
+        obj2glb --mcp-server --api-host 0.0.0.0 --api-port 8080
     
     \b
     Examples:
@@ -108,6 +146,8 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         obj2glb model.obj model.glb -t --thumbnail-size 1024x768
         obj2glb --firebase-import ./glb_files/ --firebase-credentials ./firebase-key.json
         obj2glb --firebase-import --dry-run ./glb_files/
+        obj2glb --api-server --api-host 0.0.0.0 --api-port 8080
+        obj2glb --mcp-server
     """
     # Setup logging
     logger = setup_logger(verbose)
@@ -131,12 +171,68 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         click.echo("Error: --dry-run can only be used with --firebase-import mode", err=True)
         sys.exit(1)
     
-    # Firebase import mode
-    if firebase_import:
+    # Check if we're in server mode
+    if api_server or mcp_server:
+        # Server mode - no input/output required
+        pass
+    elif firebase_import:
+        # Firebase import mode - input required
         if not input:
             click.echo("Error: GLB directory required for Firebase import", err=True)
             click.echo("Usage: obj2glb --firebase-import GLB_DIR/", err=True)
             sys.exit(1)
+    else:
+        # Regular conversion mode - input required
+        if not input:
+            click.echo("Error: Input file or directory required", err=True)
+            click.echo("Usage: obj2glb INPUT [OUTPUT]", err=True)
+            sys.exit(1)
+    
+    # API Server mode
+    if api_server:
+        logger.info("="*60)
+        logger.info("Starting OBJ2GLB API Server")
+        logger.info("="*60)
+        logger.info(f"Host: {api_host}")
+        logger.info(f"Port: {api_port}")
+        logger.info(f"API Documentation: http://{api_host}:{api_port}/docs")
+        
+        try:
+            import uvicorn
+            from .api.app import create_app
+            
+            app = create_app()
+            uvicorn.run(app, host=api_host, port=api_port)
+        except ImportError:
+            logger.error("FastAPI dependencies not installed. Install with: pip install fastapi uvicorn")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to start API server: {e}")
+            sys.exit(1)
+    
+    # MCP Server mode
+    if mcp_server:
+        logger.info("="*60)
+        logger.info("Starting OBJ2GLB MCP Server")
+        logger.info("="*60)
+        logger.info(f"Host: {api_host}")
+        logger.info(f"Port: {api_port}")
+        
+        try:
+            import asyncio
+            from .api.mcp_server import MCPServer
+            
+            server = MCPServer()
+            asyncio.run(server.run_server(host=api_host, port=api_port))
+        except ImportError:
+            logger.error("MCP server dependencies not installed. Install with: pip install fastapi uvicorn")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to start MCP server: {e}")
+            sys.exit(1)
+    
+    # Firebase import mode
+    if firebase_import:
         
         glb_directory = Path(input)
         if not glb_directory.exists():
@@ -158,7 +254,8 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
             success_count, failure_count, error_messages = importer.import_glb_files(
                 glb_directory=glb_directory,
                 dry_run=dry_run,
-                category_filter=firebase_category
+                category_filter=firebase_category,
+                update_existing=firebase_update_existing
             )
             
             # Display results

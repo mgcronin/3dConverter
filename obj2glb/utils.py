@@ -132,6 +132,40 @@ def find_obj_files(directory: str, recursive: bool = False) -> List[Path]:
     return sorted(set(obj_files))
 
 
+def find_glb_files(directory: str, recursive: bool = False) -> List[Path]:
+    """
+    Find all GLB files in a directory.
+    
+    Args:
+        directory: Path to the directory to search
+        recursive: If True, search subdirectories recursively
+        
+    Returns:
+        List of Path objects for found GLB files
+        
+    Raises:
+        NotADirectoryError: If the path is not a directory
+    """
+    dir_path = Path(directory)
+    
+    if not dir_path.exists():
+        raise FileNotFoundError(f"Directory not found: {directory}")
+    
+    if not dir_path.is_dir():
+        raise NotADirectoryError(f"Path is not a directory: {directory}")
+    
+    if recursive:
+        # Recursive search using rglob
+        glb_files = list(dir_path.rglob("*.glb"))
+        glb_files.extend(dir_path.rglob("*.GLB"))
+    else:
+        # Non-recursive search using glob
+        glb_files = list(dir_path.glob("*.glb"))
+        glb_files.extend(dir_path.glob("*.GLB"))
+    
+    return sorted(set(glb_files))
+
+
 def get_output_path(input_path: Path, output_dir: Optional[Path] = None, 
                     input_base_dir: Optional[Path] = None) -> Path:
     """

@@ -92,7 +92,8 @@ class FirebaseImporter:
         self,
         glb_directory: Path,
         dry_run: bool = False,
-        category_filter: Optional[str] = None
+        category_filter: Optional[str] = None,
+        update_existing: bool = False
     ) -> Tuple[int, int, List[str]]:
         """
         Import GLB files from directory to Firebase.
@@ -101,6 +102,7 @@ class FirebaseImporter:
             glb_directory: Directory containing GLB files
             dry_run: If True, only validate without importing
             category_filter: Only import specific category ('doors', 'double_doors', 'garages', 'tools')
+            update_existing: If True, update existing documents; if False, skip them
             
         Returns:
             Tuple of (success_count, failure_count, error_messages)
@@ -152,7 +154,7 @@ class FirebaseImporter:
                         success_count += 1
                     else:
                         # Actually import to Firebase
-                        self._import_single_glb_file(glb_file, category)
+                        self._import_single_glb_file(glb_file, category, update_existing)
                         logger.info(f"✓ Successfully imported {glb_file.name}")
                         success_count += 1
                 
@@ -179,7 +181,7 @@ class FirebaseImporter:
         if not validator:
             raise FirebaseImportError(f"Validation failed for {glb_file.name}")
     
-    def _import_single_glb_file(self, glb_file: Path, category: str):
+    def _import_single_glb_file(self, glb_file: Path, category: str, update_existing: bool = False):
         """Import a single GLB file to Firebase."""
         # Generate object data
         obj_data = self._generate_object_data(glb_file, category)
@@ -203,18 +205,24 @@ class FirebaseImporter:
             logger.info(f"[MOCK] Would import to {category}/{doc_id}: {firebase_data}")
             return
         
-        # Add to Firebase collection
+        # Add to Firebase collection (assumes schema already exists)
         collection_ref = self.db.collection(category)
         doc_ref = collection_ref.document(doc_id)
         
         # Check if document already exists
-        if doc_ref.get().exists:
+        existing_doc = doc_ref.get()
+        if existing_doc.exists:
             logger.warning(f"Document {doc_id} already exists in {category} collection")
-            # Update existing document
-            doc_ref.update(firebase_data)
-            logger.info(f"Updated existing document: {doc_id}")
+            if update_existing:
+                # Update existing document
+                doc_ref.update(firebase_data)
+                logger.info(f"Updated existing document: {doc_id}")
+            else:
+                # Skip existing documents (default behavior)
+                logger.info(f"Skipping existing document: {doc_id}")
+                return
         else:
-            # Create new document
+            # Create new document in existing schema
             doc_ref.set(firebase_data)
             logger.info(f"Created new document: {doc_id}")
     

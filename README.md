@@ -112,6 +112,27 @@ obj2glb --firebase-import --firebase-category tools ./glb_files/
 
 # With Firebase credentials
 obj2glb --firebase-import --firebase-credentials ./firebase-key.json ./glb_files/
+
+# Update existing documents instead of skipping them
+obj2glb --firebase-import --firebase-update-existing ./glb_files/
+```
+
+**API Server:**
+```bash
+# Start REST API server
+obj2glb --api-server
+
+# Start API server on specific host and port
+obj2glb --api-server --api-host 0.0.0.0 --api-port 8080
+```
+
+**MCP Server:**
+```bash
+# Start MCP (Model Context Protocol) server
+obj2glb --mcp-server
+
+# Start MCP server on specific host and port
+obj2glb --mcp-server --api-host 0.0.0.0 --api-port 8080
 ```
 
 **Overwrite existing files:**
@@ -170,6 +191,19 @@ GLB files are automatically categorized into Firebase collections:
    - Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`
    - Project ID: `--firebase-project-id your-project-id`
 
+### Existing Schema Behavior
+
+The Firebase import assumes that the collections (`doors`, `double_doors`, `garages`, `tools`) already exist in your Firebase Firestore database. It will:
+
+- **Skip existing documents** by default (recommended for production)
+- **Add new documents** to existing collections
+- **Update existing documents** only if `--firebase-update-existing` is used
+
+This ensures that:
+- Existing data is preserved
+- No schema conflicts occur
+- The import is safe to run multiple times
+
 ## How It Works
 
 The converter uses `trimesh` for 3D model processing and `pygltflib` for GLB export. It:
@@ -180,6 +214,123 @@ The converter uses `trimesh` for 3D model processing and `pygltflib` for GLB exp
 4. Converts the geometry and materials to GLTF format
 5. Embeds textures into the GLB file
 6. Exports a single, self-contained GLB file
+
+## REST API
+
+The tool provides a REST API for programmatic access to all conversion and analysis functionality.
+
+### Installation
+
+Install API dependencies:
+```bash
+pip install obj2glb[api]
+```
+
+### Starting the API Server
+
+```bash
+# Start API server on localhost:8000
+obj2glb --api-server
+
+# Start on specific host and port
+obj2glb --api-server --api-host 0.0.0.0 --api-port 8080
+```
+
+### API Endpoints
+
+Once running, visit `http://localhost:8000/docs` for interactive API documentation.
+
+**Key Endpoints:**
+- `POST /api/convert` - Convert single OBJ file to GLB
+- `POST /api/convert/batch` - Batch convert multiple files
+- `POST /api/analyze/model` - Analyze 3D model for metadata
+- `POST /api/categorize/model` - Categorize model using AI
+- `POST /api/extract/dimensions` - Extract model dimensions
+- `POST /api/firebase/import` - Import GLB files to Firebase
+- `GET /health` - Health check endpoint
+
+### Example API Usage
+
+```bash
+# Convert a file via API
+curl -X POST "http://localhost:8000/api/convert" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_path": "model.obj",
+    "output_path": "model.glb",
+    "generate_thumbnail": true,
+    "generate_preview": true
+  }'
+
+# Analyze a model
+curl -X POST "http://localhost:8000/api/analyze/model" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model_path": "model.glb",
+    "analysis_type": "comprehensive",
+    "include_ai_analysis": true
+  }'
+```
+
+## MCP Server
+
+The tool includes an MCP (Model Context Protocol) server for AI-powered 3D model analysis and categorization.
+
+### Installation
+
+Install MCP dependencies:
+```bash
+pip install obj2glb[mcp]
+```
+
+### Starting the MCP Server
+
+```bash
+# Start MCP server on localhost:8000
+obj2glb --mcp-server
+
+# Start on specific host and port
+obj2glb --mcp-server --api-host 0.0.0.0 --api-port 8080
+```
+
+### MCP Tools
+
+The MCP server provides the following tools for AI analysis:
+
+- **`analyze_3d_model`** - Comprehensive 3D model analysis
+- **`categorize_3d_model`** - AI-powered model categorization
+- **`extract_dimensions`** - Extract precise model dimensions
+- **`convert_obj_to_glb`** - Convert OBJ files to GLB format
+- **`batch_convert`** - Batch conversion of multiple files
+- **`firebase_import`** - Import GLB files to Firebase
+
+### AI-Powered Features
+
+The MCP server enables:
+
+1. **Intelligent Categorization** - AI analyzes 3D geometry to determine object type
+2. **Enhanced Dimension Extraction** - More accurate measurements and metadata
+3. **Quality Assessment** - Evaluates model quality and provides recommendations
+4. **Rich Metadata Generation** - Generates descriptions, tags, and usage information
+5. **Context Understanding** - Considers the model's intended use case
+
+### Example MCP Usage
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "analyze_3d_model",
+    "arguments": {
+      "model_path": "chair.glb",
+      "analysis_type": "comprehensive",
+      "include_ai": true
+    }
+  }
+}
+```
 
 ## Material and Texture Support
 
