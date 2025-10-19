@@ -38,6 +38,9 @@ setup(
         "thumbnails": [
             "pyrender>=0.1.45",
         ],
+        "firebase": [
+            "firebase-admin>=6.0.0",
+        ],
     },
     entry_points={
         "console_scripts": [

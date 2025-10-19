@@ -1099,7 +1099,7 @@ def generate_preview_html(glb_path: Path, output_html: Path = None) -> Path:
                 document.getElementById('open-file-btn').addEventListener('click', openFileDialog);
             }}
 
-            function openFolderDialog() {{
+            window.openFolderDialog = function() {{
                 // Remove any existing file inputs
                 const existingInputs = document.querySelectorAll('input[type="file"]');
                 existingInputs.forEach(input => input.remove());
@@ -1125,7 +1125,7 @@ def generate_preview_html(glb_path: Path, output_html: Path = None) -> Path:
                 input.click();
             }}
 
-            function openFileDialog() {{
+            window.openFileDialog = function() {{
                 // Remove any existing file inputs
                 const existingInputs = document.querySelectorAll('input[type="file"]');
                 existingInputs.forEach(input => input.remove());

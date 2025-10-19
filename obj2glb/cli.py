@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .converter import convert_obj_to_glb, convert_batch
 from .utils import setup_logger
+from .firebase_importer import FirebaseImporter, FirebaseImportError
 
 
 @click.command()
@@ -49,8 +50,33 @@ from .utils import setup_logger
     is_flag=True,
     help="Generate interactive HTML preview of converted models"
 )
+@click.option(
+    "--firebase-import",
+    is_flag=True,
+    help="Import converted GLB files to Firebase Firestore database"
+)
+@click.option(
+    "--firebase-credentials",
+    type=str,
+    help="Path to Firebase service account JSON file"
+)
+@click.option(
+    "--firebase-project-id",
+    type=str,
+    help="Firebase project ID"
+)
+@click.option(
+    "--firebase-category",
+    type=click.Choice(['doors', 'double_doors', 'garages', 'tools']),
+    help="Only import specific category to Firebase"
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Validate Firebase import without actually importing (use with --firebase-import)"
+)
 @click.version_option(version="0.1.0", prog_name="obj2glb")
-def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size, preview):
+def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbnail_size, preview, firebase_import, firebase_credentials, firebase_project_id, firebase_category, dry_run):
     """
     Convert 3D models from OBJ format to GLB format.
     
@@ -67,6 +93,12 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         obj2glb --batch --recursive INPUT_DIR/ OUTPUT_DIR/
     
     \b
+    Firebase Import Mode:
+        obj2glb --firebase-import GLB_DIR/
+        obj2glb --firebase-import --dry-run GLB_DIR/
+        obj2glb --firebase-import --firebase-category tools GLB_DIR/
+    
+    \b
     Examples:
         obj2glb model.obj model.glb
         obj2glb model.obj model.glb --verbose --thumbnail
@@ -74,6 +106,8 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
         obj2glb --batch --recursive ./models/ ./output/ --thumbnail
         obj2glb --batch -r ./models/ ./output/ --overwrite -t
         obj2glb model.obj model.glb -t --thumbnail-size 1024x768
+        obj2glb --firebase-import ./glb_files/ --firebase-credentials ./firebase-key.json
+        obj2glb --firebase-import --dry-run ./glb_files/
     """
     # Setup logging
     logger = setup_logger(verbose)
@@ -91,6 +125,76 @@ def main(input, output, batch, recursive, verbose, overwrite, thumbnail, thumbna
     if recursive and not batch:
         click.echo("Error: --recursive can only be used with --batch mode", err=True)
         sys.exit(1)
+    
+    # Check for invalid --dry-run usage
+    if dry_run and not firebase_import:
+        click.echo("Error: --dry-run can only be used with --firebase-import mode", err=True)
+        sys.exit(1)
+    
+    # Firebase import mode
+    if firebase_import:
+        if not input:
+            click.echo("Error: GLB directory required for Firebase import", err=True)
+            click.echo("Usage: obj2glb --firebase-import GLB_DIR/", err=True)
+            sys.exit(1)
+        
+        glb_directory = Path(input)
+        if not glb_directory.exists():
+            click.echo(f"Error: Directory does not exist: {glb_directory}", err=True)
+            sys.exit(1)
+        
+        logger.info("="*60)
+        logger.info("Firebase GLB Import")
+        logger.info("="*60)
+        
+        try:
+            # Initialize Firebase importer
+            importer = FirebaseImporter(
+                credentials_path=firebase_credentials,
+                project_id=firebase_project_id
+            )
+            
+            # Import GLB files
+            success_count, failure_count, error_messages = importer.import_glb_files(
+                glb_directory=glb_directory,
+                dry_run=dry_run,
+                category_filter=firebase_category
+            )
+            
+            # Display results
+            logger.info("="*60)
+            logger.info("Firebase Import Results")
+            logger.info("="*60)
+            logger.info(f"Successful: {success_count}")
+            logger.info(f"Failed: {failure_count}")
+            
+            if error_messages:
+                logger.info("Error Details:")
+                for error in error_messages:
+                    logger.error(f"  - {error}")
+            
+            if dry_run:
+                logger.info("✓ Dry run completed - no data was imported")
+            else:
+                logger.info("✓ Firebase import completed")
+            
+            # Show collection stats if not dry run
+            if not dry_run:
+                stats = importer.get_collection_stats()
+                logger.info("Collection Statistics:")
+                for collection, count in stats.items():
+                    logger.info(f"  {collection}: {count} documents")
+            
+            # Exit with error code if any imports failed
+            if failure_count > 0:
+                sys.exit(1)
+                
+        except FirebaseImportError as e:
+            logger.error(f"Firebase import error: {e}")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Unexpected error during Firebase import: {e}")
+            sys.exit(1)
     
     # Batch mode
     if batch:

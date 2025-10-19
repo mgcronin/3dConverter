@@ -12,6 +12,8 @@ A powerful command-line tool to convert 3D models from OBJ format to GLB format 
 - 🚀 Fast and efficient processing
 - 💼 Embeds textures directly into GLB files
 - 🛡️ Comprehensive error handling and validation
+- 🔥 Firebase Firestore import with automatic categorization
+- 📊 Interactive 3D preview with material editing
 
 ## Installation
 
@@ -97,10 +99,76 @@ obj2glb --batch ./models/ ./output/ -p -t
 # Opens model.html in your web browser to view the 3D model with materials
 ```
 
+**Firebase Import:**
+```bash
+# Import all GLB files to Firebase Firestore
+obj2glb --firebase-import ./glb_files/
+
+# Dry run to validate without importing
+obj2glb --firebase-import --dry-run ./glb_files/
+
+# Import specific category only
+obj2glb --firebase-import --firebase-category tools ./glb_files/
+
+# With Firebase credentials
+obj2glb --firebase-import --firebase-credentials ./firebase-key.json ./glb_files/
+```
+
 **Overwrite existing files:**
 ```bash
 obj2glb model.obj model.glb --overwrite
 ```
+
+## Firebase Integration
+
+The tool can automatically import converted GLB files into Firebase Firestore with intelligent categorization and metadata extraction.
+
+### Collections
+
+GLB files are automatically categorized into Firebase collections:
+
+- **`doors`** - Single door models
+- **`double_doors`** - Double door models  
+- **`garages`** - Garage door models
+- **`tools`** - All other models (lights, furniture, windows, etc.)
+
+### Object Properties
+
+**Simple Objects** (doors, double_doors, garages):
+```json
+{
+  "name": "Front Door",
+  "path": "/3dData/doors/front-door.glb"
+}
+```
+
+**Tools Objects** (more complex):
+```json
+{
+  "name": "Ceiling Lamp",
+  "3d": "/3dData/lights/ceiling-lamp.glb",
+  "dimensions": {
+    "width": 1.33,
+    "height": 0.33,
+    "depth": 1.33
+  },
+  "svgIcon": "<?xml version=\"1.0\"...",
+  "type": "Lighting",
+  "createdAt": "2025-10-19T16:50:06Z"
+}
+```
+
+### Setup
+
+1. Install Firebase dependencies:
+   ```bash
+   pip install firebase-admin
+   ```
+
+2. Set up Firebase credentials (one of):
+   - Service account JSON file: `--firebase-credentials ./firebase-key.json`
+   - Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`
+   - Project ID: `--firebase-project-id your-project-id`
 
 ## How It Works
 
